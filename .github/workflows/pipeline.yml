@@ -1,0 +1,28 @@
+name: Hourly Factory Lead Pipeline
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Runs every hour automatically
+  workflow_dispatch: # Allows manual trigger button
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Packages
+        run: pip install requests feedparser groq
+
+      - name: Execute Lead Pipeline
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+        run: python main.py
