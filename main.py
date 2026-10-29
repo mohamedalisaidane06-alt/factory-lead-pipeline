@@ -14,15 +14,31 @@ AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
 
 AIRTABLE_TABLE_NAME = "Factory Leads"
 
+# 2. Fetch Existing Airtable Company Names (for Deduplication)
+existing_companies = set()
+try:
+    airtable_get_url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}?fields[]=Company+Name"
+    headers = {"Authorization": f"Bearer {AIRTABLE_API_KEY}"}
+    res_get = requests.get(airtable_get_url, headers=headers, timeout=10)
+    if res_get.status_code == 200:
+        records = res_get.json().get("records", [])
+        for r in records:
+            name = r.get("fields", {}).get("Company Name", "").strip().lower()
+            if name:
+                existing_companies.add(name)
+    print(f"Loaded {len(existing_companies)} existing records for deduplication check.")
+except Exception as e:
+    print(f"Warning fetching existing Airtable records: {e}")
+
 all_raw_leads = []
 
-# --- SOURCE 1: Google News RSS (English Global Trade Announcements) ---
+# --- SOURCE 1: Google News RSS (Targeted Retail Brico/Jardin Focus) ---
 try:
     google_url = (
         "https://news.google.com/rss/search?q="
         "%22factory%22+OR+%22manufacturer%22+"
         "%22China%22+OR+%22Taiwan%22+"
-        "%22gardening%22+OR+%22hardware%22+OR+%22tools%22+OR+%22sanitary%22"
+        "%22shade+mesh%22+OR+%22privacy+screen%22+OR+%22shower+curtain%22+OR+%22garden+tools%22+OR+%22pet+accessories%22"
         "+when:7d&hl=en-US&gl=US&ceid=US:en"
     )
     feed = feedparser.parse(google_url)
@@ -36,9 +52,9 @@ try:
 except Exception as e:
     print(f"Google News fetch error: {e}")
 
-# --- SOURCE 2: DuckDuckGo (Global B2B & Supplier Index) ---
+# --- SOURCE 2: DuckDuckGo (Targeted Product Keywords) ---
 try:
-    ddg_query = '"manufacturer" OR "factory" "China" OR "Taiwan" "hardware" OR "gardening" OR "tools"'
+    ddg_query = '"manufacturer" OR "factory" "China" OR "Taiwan" "privacy screen" OR "garden tools" OR "hardware" OR "pet accessories"'
     ddg_results = DDGS().text(ddg_query, max_results=2)
     if ddg_results:
         for r in ddg_results:
@@ -51,9 +67,9 @@ try:
 except Exception as e:
     print(f"DuckDuckGo fetch error: {e}")
 
-# --- SOURCE 3: Baidu (Native Chinese Industrial Search Engine) ---
+# --- SOURCE 3: Baidu (Native Chinese Keywords: 遮阳网 / 浴帘 / 园艺 / 五金 - Excludes Aggregators) ---
 try:
-    baidu_url = "https://www.baidu.com/s?wd=%22%E7%94%9F%E4%BA%A7%E5%8E%82%E5%AE%B6%22+%22%E4%B8%AD%E5%9B%BD%22+%22%E4%BA%94%E9%87%91%22+OR+%22%E5%9B%AD%E8%8B%B1%22"
+    baidu_url = "https://www.baidu.com/s?wd=%22%E7%94%9F%E4%BA%A7%E5%8E%82%E5%AE%B6%22+%22%E4%B8%AD%E5%9B%BD%22+%22%E9%81%AE%E9%98%B3%E7%BD%91%22+OR+%22%E6%B5%B4%E5%B1%90%22+OR+%22%E4%BA%94%E9%87%91%22+-%E9%98%BF%E9%87%8C"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"}
     res = requests.get(baidu_url, headers=headers, timeout=10)
     if res.status_code == 200:
@@ -74,7 +90,7 @@ except Exception as e:
     print(f"Baidu fetch error: {e}")
 
 if not all_raw_leads:
-    print("No supplier leads retrieved across Google, DDG, and Baidu.")
+    print("No supplier leads retrieved.")
     exit(0)
 
 client = Groq(api_key=GROQ_API_KEY)
@@ -136,13 +152,20 @@ for lead in all_raw_leads[:3]:
         print(f"AI parsing warning: {e}")
         continue
 
+    extracted_company = data.get("companyName", "").strip()
+
     # Skip invalid or template results
-    if not data or data.get("companyName") in ["Exact Factory Name", "Unknown Supplier", "N/A"]:
+    if not extracted_company or extracted_company in ["Exact Factory Name", "Unknown Supplier", "N/A"]:
+        continue
+
+    # DEDUPLICATION CHECK: Skip if company already exists in Airtable
+    if extracted_company.lower() in existing_companies:
+        print(f"Skipping existing company: '{extracted_company}'")
         continue
 
     ifls_path = f"{data.get('iflsLevel1', 'N/A')} > {data.get('iflsLevel2', 'N/A')} > {data.get('iflsLevel3', 'N/A')}"
 
-    # Push to Airtable
+    # Push unique record to Airtable
     airtable_endpoint = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -151,7 +174,7 @@ for lead in all_raw_leads[:3]:
 
     payload = {
         "fields": {
-            "Company Name": data.get("companyName", title),
+            "Company Name": extracted_company,
             "Main Products": f"[{ifls_path}] ({source_engine}) {data.get('mainProducts', 'Retail Consumer Goods')}",
             "Location": data.get("locationAddress", "China / Taiwan"),
             "Business Type": data.get("businessType", "Manufacturer"),
@@ -161,4 +184,7 @@ for lead in all_raw_leads[:3]:
     }
 
     res = requests.post(airtable_endpoint, json=payload, headers=headers)
-    print(f"Pushed '{data.get('companyName')}' via {source_engine}: Status {res.status_code}")
+    print(f"Pushed NEW lead '{extracted_company}' via {source_engine}: Status {res.status_code}")
+    
+    # Add to in-memory set to prevent duplicate push in same execution run
+    existing_companies.add(extracted_company.lower())
