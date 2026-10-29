@@ -35,7 +35,7 @@ Return ONLY raw JSON with keys: companyName, phoneNumber, mobileNumber, emailQQ,
 
 try:
     response = client.chat.completions.create(
-        model="llama-3.1-70b-versatile",  # Updated to active available model
+        model="llama-3.1-8b-instant",  # Updated to Groq's active default model
         messages=[{"role": "user", "content": prompt}],
         temperature=0.1
     )
