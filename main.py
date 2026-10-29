@@ -95,6 +95,29 @@ if not all_raw_leads:
 
 client = Groq(api_key=GROQ_API_KEY)
 
+# Helper function with automatic model fallback to prevent 404 crashes
+def query_groq_with_fallback(prompt):
+    models_to_try = [
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "llama3-70b-8192"
+    ]
+    for model_name in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            if "404" in str(e) or "model_not_found" in str(e):
+                print(f"Model '{model_name}' unavailable, trying next fallback...")
+                continue
+            else:
+                raise e
+    raise Exception("All fallback Groq models failed.")
+
 # 3. Process Leads via Groq AI
 for lead in all_raw_leads[:4]:
     title = lead["title"]
@@ -144,12 +167,7 @@ for lead in all_raw_leads[:4]:
     """
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",  # <--- Restored original working model
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
-        )
-        raw_output = response.choices[0].message.content
+        raw_output = query_groq_with_fallback(prompt)
         json_match = re.search(r'\{[\s\S]*\}', raw_output)
         data = json.loads(json_match.group(0)) if json_match else {}
     except Exception as e:
