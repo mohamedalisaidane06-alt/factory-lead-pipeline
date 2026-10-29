@@ -32,7 +32,7 @@ except Exception as e:
 
 all_raw_leads = []
 
-# --- SOURCE 1: Google News RSS (Expanded to 60 Days / 2 Months) ---[cite: 3]
+# --- SOURCE 1: Google News RSS (Expanded to 60 Days / 2 Months) ---
 try:
     google_url = (
         "https://news.google.com/rss/search?q="
@@ -95,12 +95,11 @@ if not all_raw_leads:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# Helper function with automatic model fallback to prevent 404 crashes
+# Helper function with active model fallback
 def query_groq_with_fallback(prompt):
     models_to_try = [
-        "llama-3.1-8b-instant",
-        "llama-3.3-70b-versatile",
-        "llama3-70b-8192"
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-120b"
     ]
     for model_name in models_to_try:
         try:
@@ -111,7 +110,7 @@ def query_groq_with_fallback(prompt):
             )
             return response.choices[0].message.content
         except Exception as e:
-            if "404" in str(e) or "model_not_found" in str(e):
+            if "404" in str(e) or "model_not_found" in str(e) or "decommissioned" in str(e):
                 print(f"Model '{model_name}' unavailable, trying next fallback...")
                 continue
             else:
