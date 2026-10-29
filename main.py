@@ -32,17 +32,17 @@ except Exception as e:
 
 all_raw_leads = []
 
-# --- SOURCE 1: Google News RSS ---
+# --- SOURCE 1: Google News RSS (Expanded to 60 Days / 2 Months) ---
 try:
     google_url = (
         "https://news.google.com/rss/search?q="
         "%22factory%22+OR+%22manufacturer%22+"
         "%22China%22+OR+%22Taiwan%22+"
         "%22shade+mesh%22+OR+%22privacy+screen%22+OR+%22shower+curtain%22+OR+%22garden+tools%22+OR+%22pet+accessories%22"
-        "+when:7d&hl=en-US&gl=US&ceid=US:en"
+        "+when:60d&hl=en-US&gl=US&ceid=US:en"
     )
     feed = feedparser.parse(google_url)
-    for entry in feed.entries[:2]:
+    for entry in feed.entries[:3]:
         all_raw_leads.append({
             "source": "Google News",
             "title": entry.get("title", ""),
@@ -55,7 +55,7 @@ except Exception as e:
 # --- SOURCE 2: DuckDuckGo ---
 try:
     ddg_query = '"manufacturer" OR "factory" "China" OR "Taiwan" "privacy screen" OR "garden tools" OR "hardware" OR "pet accessories"'
-    ddg_results = DDGS().text(ddg_query, max_results=2)
+    ddg_results = DDGS().text(ddg_query, max_results=3)
     if ddg_results:
         for r in ddg_results:
             all_raw_leads.append({
@@ -75,7 +75,7 @@ try:
     if res.status_code == 200:
         soup = BeautifulSoup(res.text, "html.parser")
         containers = soup.find_all("div", class_=re.compile("c-container"))
-        for item in containers[:2]:
+        for item in containers[:3]:
             title_tag = item.find("h3")
             abstract_tag = item.find("div", class_=re.compile("c-abstract|c-span"))
             link_tag = item.find("a")
@@ -96,7 +96,7 @@ if not all_raw_leads:
 client = Groq(api_key=GROQ_API_KEY)
 
 # 3. Process Leads via Groq AI (Llama 3.1 8B)
-for lead in all_raw_leads[:3]:
+for lead in all_raw_leads[:4]:
     title = lead["title"]
     summary = lead["summary"]
     source_engine = lead["source"]
