@@ -2,23 +2,23 @@ name: Hourly Factory Lead Pipeline
 
 on:
   schedule:
-    - cron: '0 * * * *' # Runs every hour automatically
-  workflow_dispatch: # Allows manual trigger button
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install Packages
-        run: pip install requests feedparser groq
+        run: pip install requests feedparser groq duckduckgo_search beautifulsoup4
 
       - name: Execute Lead Pipeline
         env:
