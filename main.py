@@ -32,7 +32,7 @@ except Exception as e:
 
 all_raw_leads = []
 
-# --- SOURCE 1: Google News RSS (Targeted Retail Brico/Jardin Focus) ---
+# --- SOURCE 1: Google News RSS ---
 try:
     google_url = (
         "https://news.google.com/rss/search?q="
@@ -52,7 +52,7 @@ try:
 except Exception as e:
     print(f"Google News fetch error: {e}")
 
-# --- SOURCE 2: DuckDuckGo (Targeted Product Keywords) ---
+# --- SOURCE 2: DuckDuckGo ---
 try:
     ddg_query = '"manufacturer" OR "factory" "China" OR "Taiwan" "privacy screen" OR "garden tools" OR "hardware" OR "pet accessories"'
     ddg_results = DDGS().text(ddg_query, max_results=2)
@@ -67,7 +67,7 @@ try:
 except Exception as e:
     print(f"DuckDuckGo fetch error: {e}")
 
-# --- SOURCE 3: Baidu (Native Chinese Keywords: 遮阳网 / 浴帘 / 园艺 / 五金 - Excludes Aggregators) ---
+# --- SOURCE 3: Baidu ---
 try:
     baidu_url = "https://www.baidu.com/s?wd=%22%E7%94%9F%E4%BA%A7%E5%8E%82%E5%AE%B6%22+%22%E4%B8%AD%E5%9B%BD%22+%22%E9%81%AE%E9%98%B3%E7%BD%91%22+OR+%22%E6%B5%B4%E5%B1%90%22+OR+%22%E4%BA%94%E9%87%91%22+-%E9%98%BF%E9%87%8C"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"}
@@ -95,7 +95,7 @@ if not all_raw_leads:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# Process extracted leads through Groq AI (Llama 3.1 8B)
+# 3. Process Leads via Groq AI (Llama 3.1 8B)
 for lead in all_raw_leads[:3]:
     title = lead["title"]
     summary = lead["summary"]
@@ -126,15 +126,19 @@ for lead in all_raw_leads[:3]:
        - EXCLUDE Heavy Industrial Machinery, Equipment, Sporting Goods, and Kitchenware.
        - EXCLUDE Raw fabric-only processors and component-only suppliers. Must be finished retail consumer goods.
 
-    Return ONLY a raw JSON object with NO markdown formatting or backticks:
+    Return ONLY a raw JSON object with NO markdown formatting or backticks matching these exact fields:
     {{
       "companyName": "Exact Factory Name",
       "iflsLevel1": "Exact Level 1 Category",
       "iflsLevel2": "Exact Level 2 Category",
       "iflsLevel3": "Exact Level 3 Category",
       "mainProducts": "Finished consumer products description",
-      "locationAddress": "City / Province, China or Taiwan",
-      "phoneNumber": "Phone Number or N/A",
+      "location": "Province/Country (e.g., Zhejiang, China)",
+      "companyLocationAddress": "Full City/Address if available or Province",
+      "phoneNumber": "Landline Phone Number or N/A",
+      "mobileNumber": "Mobile / WhatsApp Number or N/A",
+      "emailQQ": "Email address or QQ number or N/A",
+      "cert": "Factory Certifications e.g. ISO9001, BSCI, CE or N/A",
       "businessType": "Manufacturer"
     }}
     """
@@ -158,14 +162,14 @@ for lead in all_raw_leads[:3]:
     if not extracted_company or extracted_company in ["Exact Factory Name", "Unknown Supplier", "N/A"]:
         continue
 
-    # DEDUPLICATION CHECK: Skip if company already exists in Airtable
+    # Deduplication check against existing Airtable records
     if extracted_company.lower() in existing_companies:
         print(f"Skipping existing company: '{extracted_company}'")
         continue
 
     ifls_path = f"{data.get('iflsLevel1', 'N/A')} > {data.get('iflsLevel2', 'N/A')} > {data.get('iflsLevel3', 'N/A')}"
 
-    # Push unique record to Airtable
+    # Push to Airtable matching all columns
     airtable_endpoint = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -176,15 +180,18 @@ for lead in all_raw_leads[:3]:
         "fields": {
             "Company Name": extracted_company,
             "Main Products": f"[{ifls_path}] ({source_engine}) {data.get('mainProducts', 'Retail Consumer Goods')}",
-            "Location": data.get("locationAddress", "China / Taiwan"),
+            "Location": data.get("location", "China / Taiwan"),
             "Business Type": data.get("businessType", "Manufacturer"),
             "Source URL": link,
-            "Phone Number": data.get("phoneNumber", "N/A")
+            "Phone Number": data.get("phoneNumber", "N/A"),
+            "Mobile Number": data.get("mobileNumber", "N/A"),
+            "Email / QQ": data.get("emailQQ", "N/A"),
+            "Company Location Address": data.get("companyLocationAddress", "N/A"),
+            "Cert": data.get("cert", "N/A")
         }
     }
 
     res = requests.post(airtable_endpoint, json=payload, headers=headers)
     print(f"Pushed NEW lead '{extracted_company}' via {source_engine}: Status {res.status_code}")
     
-    # Add to in-memory set to prevent duplicate push in same execution run
     existing_companies.add(extracted_company.lower())
