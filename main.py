@@ -95,7 +95,7 @@ if not all_raw_leads:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# 3. Process Leads via Groq AI (Updated Model)
+# 3. Process Leads via Groq AI (Active Model)
 for lead in all_raw_leads[:4]:
     title = lead["title"]
     summary = lead["summary"]
@@ -145,7 +145,7 @@ for lead in all_raw_leads[:4]:
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # <--- Updated active model name
+            model="gpt-oss-20b",  # <--- Updated active Groq model
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )
