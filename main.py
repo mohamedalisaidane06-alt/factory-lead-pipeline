@@ -125,35 +125,35 @@ for lead in all_raw_leads[:4]:
     link = lead["url"]
 
     prompt = f"""
-    You are an expert global sourcing specialist for European discount retail chains (e.g., NOZ, Action).
+  You are an expert global sourcing specialist for European discount retail chains (e.g., NOZ, Action) specializing in Brico/Jardin-Animalerie categories.
     Analyze this supplier lead retrieved from search engine: {source_engine}
 
     Title: {title}
     Summary: {summary}
 
-    ### Sourcing & IFLS Taxonomy Rules:
-    1. GEOGRAPHY: Direct manufacturers/factories in China or Taiwan ONLY.
-    2. SCOPE (BRICO / JARDIN-ANIMALERIE):
-       - Personal Well-Being (Pet Accessories / Barnyard / Dog & Cat)
-       - Home Equipment (Bathroom Accessories, Wooden Building, Electricity)
-       - Gardening (Watering, Garden Containers, Exterior Design, Outdoor Garden, Vegetable Garden, Garden Furniture, Tools, Pumps)
-       - Hardware (General Hardware, Furniture Hardware)
-       - Furniture (Furniture Textiles - Cushions, Covers, Curtains)
-       - Wall & Coverings (Tiles, Floor/Wall Coverings)
-       - Tools (Hand Tools, Portable Power Tools)
-       - Painting & Drugstore (Painting Accessories, Glues, Adhesives, Paints)
-       - Plumbing & Sanitary (Plumbing, Taps, Sanitary, Heating)
-       - Automotive Products (Car Air Fresheners, Auto Elec, Interior/Exterior Equip, Care Products, Tools)
-    3. EXCLUSIONS:
-       - EXCLUDE Heavy Industrial Machinery, Equipment, Sporting Goods, and Kitchenware.
-       - EXCLUDE Raw fabric-only processors and component-only suppliers. Must be finished retail consumer goods.
+    ### Strict IFLS Taxonomy Rules (MANDATORY):
+    You MUST classify the product into one of these exact IFLS Level 1 categories and provide appropriate Level 2 and Level 3 sub-categories:
+    1. Personal Well-Being (Level 2: Pet Accessories, Dog & Cat, Barnyard)
+    2. Home Equipment (Level 2: Bathroom Accessories, Wooden Building, Electricity)
+    3. Gardening (Level 2: Watering, Garden Containers, Exterior Design, Outdoor Garden, Vegetable Garden, Garden Furniture, Tools, Pumps)
+    4. Hardware (Level 2: General Hardware, Furniture Hardware)
+    5. Furniture (Level 2: Furniture Textiles, Cushions, Covers, Curtains)
+    6. Wall & Coverings (Level 2: Tiles, Floor & Wall Coverings)
+    7. Tools (Level 2: Hand Tools, Portable Power Tools)
+    8. Painting & Drugstore (Painting Accessories, Glues, Adhesives, Paints)
+    9. Plumbing & Sanitary (Plumbing, Taps, Sanitary, Heating)
+    10. Automotive Products (Car Air Fresheners, Auto Elec, Interior/Exterior Equip, Care Products)
+
+    ### Exclusions:
+    - EXCLUDE Heavy Industrial Machinery, Equipment, Sporting Goods, and Kitchenware.
+    - EXCLUDE Raw fabric-only processors and component-only suppliers. Must be finished retail consumer goods.
 
     Return ONLY a raw JSON object with NO markdown formatting or backticks matching these exact fields:
     {{
       "companyName": "Exact Factory Name",
-      "iflsLevel1": "Exact Level 1 Category",
-      "iflsLevel2": "Exact Level 2 Category",
-      "iflsLevel3": "Exact Level 3 Category",
+      "iflsLevel1": "Exact Level 1 Category from the list above",
+      "iflsLevel2": "Exact Level 2 Sub-category",
+      "iflsLevel3": "Specific product sub-type",
       "mainProducts": "Finished consumer products description",
       "location": "Province/Country (e.g., Zhejiang, China)",
       "companyLocationAddress": "Full City/Address if available or Province",
