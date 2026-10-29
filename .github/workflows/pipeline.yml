@@ -1,9 +1,9 @@
 name: Hourly Factory Lead Pipeline
 
 on:
+  workflow_dispatch: # Keeps the manual button available when you want it
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *' # Runs automatically at the start of every hour
 
 jobs:
   run-pipeline:
@@ -18,7 +18,8 @@ jobs:
           python-version: '3.10'
 
       - name: Install Packages
-        run: pip install requests feedparser groq duckduckgo_search beautifulsoup4
+        run: |
+          pip install requests feedparser beautifulsoup4 groq duckduckgo_search
 
       - name: Execute Lead Pipeline
         env:
