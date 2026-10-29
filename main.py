@@ -32,7 +32,7 @@ except Exception as e:
 
 all_raw_leads = []
 
-# --- SOURCE 1: Google News RSS (Expanded to 60 Days / 2 Months) ---
+# --- SOURCE 1: Google News RSS (Expanded to 60 Days / 2 Months) ---[cite: 3]
 try:
     google_url = (
         "https://news.google.com/rss/search?q="
@@ -145,7 +145,7 @@ for lead in all_raw_leads[:4]:
 
     try:
         response = client.chat.completions.create(
-            model="openai/gpt-oss-20b",  # <--- Correct namespaced model ID
+            model="llama-3.1-8b-instant",  # <--- Restored original working model
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )
