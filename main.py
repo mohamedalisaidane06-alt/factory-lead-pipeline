@@ -12,7 +12,7 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 AIRTABLE_API_KEY = os.environ.get("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
 
-AIRTABLE_TABLE_NAME = "Factory Leads"
+AIRTABLE_TABLE_NAME = "Garden factory leads"
 
 # 2. Fetch Existing Airtable Company Names (for Deduplication)
 existing_companies = set()
